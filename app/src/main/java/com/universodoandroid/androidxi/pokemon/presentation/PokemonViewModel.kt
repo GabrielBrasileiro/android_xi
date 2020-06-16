@@ -3,8 +3,11 @@ package com.universodoandroid.androidxi.pokemon.presentation
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.universodoandroid.androidxi.extensions.ioToMain
 import com.universodoandroid.androidxi.pokemon.domain.usecase.GetPokemonsUseCase
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.FlowCollector
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.launch
@@ -26,11 +29,9 @@ class PokemonViewModel @Inject constructor(
     private fun loadPokemons() {
         viewModelScope.launch {
             try {
-                getPokemonsUseCase.get()
-                    .flowOn(Dispatchers.IO)
-                    .collect {
-                        print(it)
-                    }
+                getPokemonsUseCase.get().ioToMain {
+                    print(it)
+                }
             } catch (e: Exception) {
                 print(e)
             }
