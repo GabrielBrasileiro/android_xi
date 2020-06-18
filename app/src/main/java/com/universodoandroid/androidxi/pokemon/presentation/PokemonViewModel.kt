@@ -1,39 +1,46 @@
 package com.universodoandroid.androidxi.pokemon.presentation
 
-import androidx.lifecycle.MutableLiveData
-import androidx.lifecycle.ViewModel
+import androidx.hilt.lifecycle.ViewModelInject
 import androidx.lifecycle.viewModelScope
+import com.mvvmredux.core.BaseViewModel
+import com.mvvmredux.core.livedata.SingleLiveEvent
+import com.mvvmredux.core.reducer.Reducer
 import com.universodoandroid.androidxi.extensions.ioToMain
+import com.universodoandroid.androidxi.pokemon.domain.entity.PokemonsInfo
 import com.universodoandroid.androidxi.pokemon.domain.usecase.GetPokemonsUseCase
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.FlowCollector
-import kotlinx.coroutines.flow.collect
-import kotlinx.coroutines.flow.flowOn
+import com.universodoandroid.androidxi.pokemon.presentation.model.PokemonPresentation
+import com.universodoandroid.androidxi.pokemon.presentation.reducer.PokemonData
+import com.universodoandroid.androidxi.pokemon.presentation.reducer.PokemonEvent
+import com.universodoandroid.androidxi.pokemon.presentation.reducer.PokemonStateEvent
+import com.universodoandroid.androidxi.utils.Mapper
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
-import java.lang.Exception
 import javax.inject.Inject
 
-class PokemonViewModel @Inject constructor(
-    private val getPokemonsUseCase: GetPokemonsUseCase
-) : ViewModel() {
-
-    private val pokemonsMutableLiveData = MutableLiveData<String>()
-
-    fun getPokemonsLiveData() = pokemonsMutableLiveData
+class PokemonViewModel @ViewModelInject constructor(
+    private val getPokemonsUseCase: GetPokemonsUseCase,
+    private val mapper: Mapper<PokemonsInfo, MutableList<PokemonPresentation>>,
+    reducer: Reducer<PokemonData, PokemonStateEvent>,
+    event: SingleLiveEvent<PokemonEvent>
+) : BaseViewModel<PokemonData, PokemonEvent, PokemonStateEvent>(event, reducer) {
 
     init {
         loadPokemons()
     }
 
     private fun loadPokemons() {
+        sendEvent(PokemonEvent.ShowLoader)
         viewModelScope.launch {
             try {
-                getPokemonsUseCase.get().ioToMain {
-                    print(it)
+                getPokemonsUseCase.get().map {
+                    mapper.map(it)
+                }.ioToMain {
+                    updateTo(PokemonStateEvent.ShowPokemons(it))
                 }
             } catch (e: Exception) {
                 print(e)
+            } finally {
+                sendEvent(PokemonEvent.HideLoader)
             }
         }
     }
